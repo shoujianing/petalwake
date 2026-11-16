@@ -296,6 +296,16 @@ export class Shore {
     const cliff = (this.cliff = new Uint8Array(S * S));
     try {
       const img = T.lightTex.image;
+      if (img.data && img.width) {
+        // (decoded bytes, see core/png.js: the alpha averaged over each k x k block, as drawImage would)
+        const k = Math.max(1, Math.round(img.width / S)), W = img.width, D = img.data, n = k * k;
+        for (let z = 0; z < S; z++) for (let x = 0; x < S; x++) {
+          let acc = 0;
+          for (let j = 0; j < k; j++) { const r = ((z * k + j) * W + x * k) * 4 + 3; for (let i = 0; i < k; i++) acc += D[r + i * 4]; }
+          cliff[z * S + x] = Math.round(acc / n);
+        }
+        return;
+      }
       const c = document.createElement('canvas');
       c.width = c.height = S;
       const g = c.getContext('2d', { willReadFrequently: true });

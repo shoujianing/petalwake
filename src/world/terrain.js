@@ -4,6 +4,7 @@ import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, MEADOW, SHADOW, STRIP, TOWN_SHADOW, TOWN_MASK } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
 import { Device } from '../core/device.js';
+import { decodePNG } from '../core/png.js';
 import { ASSETS } from '../core/paths.js';
 
 // CDLOD. For seams to stay closed, level L may only begin morphing beyond the farthest point any
@@ -17,14 +18,24 @@ const MAX_NODES = 2600;
 
 // createImageBitmap decodes off the main thread and, unlike img.decode(), does not wait on the
 // page's rendering loop (which stalls in a hidden or throttled tab)
+//
+// PNGs are the baked data maps, with data in alpha: those are decoded byte for byte (core/png.js),
+// since some browsers premultiply an ImageBitmap whatever they are asked, and the light map's
+// near-zero alpha would then black out the baked sunlight.
 export async function loadImage(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
+  if (/\.png(\?|$)/i.test(url)) {
+    const buf = await res.arrayBuffer();
+    const raw = await decodePNG(buf).catch(() => null);
+    if (raw) return raw;
+    return createImageBitmap(new Blob([buf]), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+  }
   return createImageBitmap(await res.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
 }
 
 export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THREE.ClampToEdgeWrapping } = {}) {
-  const t = new THREE.Texture(img);
+  const t = img.raw ? new THREE.DataTexture(img.data, img.width, img.height, THREE.RGBAFormat, THREE.UnsignedByteType) : new THREE.Texture(img);
   t.flipY = false;
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   t.generateMipmaps = mips;
@@ -37,6 +48,7 @@ export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THRE
 }
 
 function pixels(img, size) {
+  if (img.raw && (!size || size === img.width)) return img.data;
   const c = document.createElement('canvas');
   c.width = c.height = size || img.width;
   const g = c.getContext('2d', { willReadFrequently: true });
