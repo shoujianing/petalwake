@@ -1,13 +1,22 @@
 :root {
+  /* notches and home indicators (zero on a desktop) */
+  --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px);
+  --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
   --ink: #fff8ec;
   --petal: #ff9ec4;
   --gold: #ffd36b;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; background: #0b1420; overflow: hidden; }
-body { font-family: "Karla", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
-#view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; outline: none; }
+html, body { margin: 0; height: 100%; background: #0b1420; overflow: hidden; overscroll-behavior: none; }
+body {
+  font-family: "Karla", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+/* (100% rather than 100vh: on phones 100vh is the height with the address bar hidden) */
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+.noscript { position: fixed; inset: 0; display: grid; place-items: center; margin: 0; font-size: 18px; }
 
 /* ---------- title ---------- */
 #title {
@@ -17,7 +26,7 @@ body { font-family: "Karla", system-ui, sans-serif; color: var(--ink); -webkit-f
 }
 #title.loading { background: #0b1522; }
 #title.gone { opacity: 0; visibility: hidden; pointer-events: none; }
-.title-inner { padding: 24px; transform: translateY(-4vh); }
+.title-inner { padding: 24px calc(24px + var(--sr)) calc(24px + var(--sb)) calc(24px + var(--sl)); transform: translateY(-4vh); max-height: 100%; }
 .kicker { margin: 0 0 10px; letter-spacing: 0.34em; text-transform: uppercase; font-size: 12px; opacity: 0.78; }
 h1 {
   margin: 0; font-family: "Fraunces", Georgia, serif; font-weight: 340; font-style: italic;
@@ -27,13 +36,20 @@ h1 {
 .bar { width: min(280px, 60vw); height: 2px; margin: 34px auto 12px; background: rgba(255, 255, 255, 0.18); overflow: hidden; border-radius: 2px; }
 .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--petal), var(--gold)); transition: width 0.35s ease; }
 .status { margin: 0; font-size: 13px; letter-spacing: 0.08em; opacity: 0.7; min-height: 1.4em; }
+.status.error { max-width: min(560px, 86vw); margin: 30px auto 0; font-size: 15px; line-height: 1.5; letter-spacing: 0.02em; opacity: 0.92; }
+.status.error small { display: block; margin-top: 10px; font-size: 13px; opacity: 0.75; }
+.retry {
+  display: block; margin: 18px auto 0; padding: 11px 30px; font: 600 13px "Karla", sans-serif; letter-spacing: 0.24em; text-transform: uppercase;
+  color: #2a1730; background: #fff3e2; border: 0; border-radius: 999px; cursor: pointer;
+}
 #start {
   margin-top: 30px; padding: 15px 44px; font: 600 14px "Karla", sans-serif; letter-spacing: 0.3em; text-transform: uppercase;
   color: #2a1730; background: linear-gradient(180deg, #fff3e2, #ffd9e6); border: 0; border-radius: 999px; cursor: pointer;
   box-shadow: 0 10px 40px rgba(255, 150, 200, 0.35), inset 0 -2px 0 rgba(120, 40, 80, 0.18);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-#start:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 16px 50px rgba(255, 150, 200, 0.5), inset 0 -2px 0 rgba(120, 40, 80, 0.18); }
+@media (hover: hover) { #start:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 16px 50px rgba(255, 150, 200, 0.5), inset 0 -2px 0 rgba(120, 40, 80, 0.18); } }
+#start:active { transform: scale(0.97); }
 .keys { margin-top: 34px; display: flex; gap: 10px 26px; flex-wrap: wrap; justify-content: center; font-size: 13px; opacity: 0.86; max-width: 760px; }
 kbd {
   display: inline-block; min-width: 24px; padding: 3px 7px; margin-right: 4px; font: 600 11px "Karla", sans-serif; letter-spacing: 0.06em;
@@ -43,21 +59,21 @@ kbd {
 /* ---------- hud ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 3; transition: opacity 0.6s ease; text-shadow: 0 1px 12px rgba(0, 20, 50, 0.55); }
 #hud.quiet { opacity: 0; }
-.hud-tl { position: absolute; left: 30px; top: 26px; }
+.hud-tl { position: absolute; left: calc(30px + var(--sl)); top: calc(26px + var(--st)); }
 .seeds { display: flex; align-items: baseline; gap: 8px; font-family: "Fraunces", serif; font-size: 34px; font-style: italic; }
 .seeds-of { font-size: 16px; opacity: 0.7; font-style: normal; font-family: "Karla", sans-serif; }
 .seeds-icon { width: 15px; height: 15px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, var(--gold) 55%, #ff9f43); box-shadow: 0 0 16px var(--gold); align-self: center; }
 .place { margin-top: 6px; font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0; transition: opacity 1.2s ease; }
 .place.show { opacity: 0.85; }
-.hud-bl { position: absolute; left: 30px; bottom: 28px; width: 190px; }
+.hud-bl { position: absolute; left: calc(30px + var(--sl)); bottom: calc(28px + var(--sb)); width: 190px; }
 .gust { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); overflow: hidden; }
 .gust-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #fff, var(--petal)); border-radius: 4px; }
 .gust-label { margin-top: 7px; font-size: 10px; letter-spacing: 0.34em; text-transform: uppercase; opacity: 0.7; }
-.hud-br { position: absolute; right: 32px; bottom: 22px; font-family: "Fraunces", serif; font-style: italic; font-size: 44px; line-height: 1; }
+.hud-br { position: absolute; right: calc(32px + var(--sr)); bottom: calc(22px + var(--sb)); font-family: "Fraunces", serif; font-style: italic; font-size: 44px; line-height: 1; }
 .hud-br small { font: 500 11px "Karla", sans-serif; letter-spacing: 0.3em; text-transform: uppercase; margin-left: 8px; opacity: 0.7; }
 .toast {
   position: absolute; left: 50%; top: 15%; transform: translateX(-50%); font-family: "Fraunces", serif; font-style: italic; font-size: clamp(22px, 2.6vw, 38px);
-  opacity: 0; transition: opacity 0.9s ease; white-space: nowrap;
+  opacity: 0; transition: opacity 0.9s ease; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
 }
 .toast.show { opacity: 0.96; }
 
@@ -65,7 +81,7 @@ kbd {
 .compass svg { color: var(--gold); filter: drop-shadow(0 0 6px rgba(255, 211, 107, 0.7)); transition: transform 0.12s linear; }
 
 /* ---------- errands: the parcel (top right), the landing prompt, the delivery card, the trick ---------- */
-.hud-tr { position: absolute; right: 32px; top: 26px; text-align: right; }
+.hud-tr { position: absolute; right: calc(32px + var(--sr)); top: calc(26px + var(--st)); text-align: right; }
 .job-kicker { font-size: 10px; letter-spacing: 0.34em; text-transform: uppercase; opacity: 0.75; }
 .job-icon {
   display: inline-block; width: 12px; height: 11px; margin-right: 10px; border-radius: 2px; vertical-align: -1px;
@@ -101,3 +117,32 @@ kbd {
 .trick { margin-top: 12px; font-size: 10px; letter-spacing: 0.34em; text-transform: uppercase; opacity: 0.75; transition: opacity 0.3s ease; }
 .trick kbd { min-width: 20px; padding: 2px 6px; margin-right: 8px; text-align: center; }
 .trick.cool { opacity: 0.3; }
+
+/* ---------- small screens: phones held sideways, and anything short or narrow ---------- */
+@media (max-height: 560px), (max-width: 700px) {
+  .kicker { font-size: 10px; letter-spacing: 0.28em; margin-bottom: 4px; }
+  h1 { font-size: clamp(46px, min(11vw, 17vh), 120px); }
+  .bar { margin: 18px auto 10px; }
+  #start { margin-top: 16px; padding: 13px 38px; }
+  .keys { margin-top: 16px; gap: 6px 18px; font-size: 12px; }
+  .hud-tl { left: calc(16px + var(--sl)); top: calc(12px + var(--st)); }
+  .hud-tr { right: calc(16px + var(--sr)); top: calc(12px + var(--st)); }
+  .seeds { font-size: 24px; gap: 6px; }
+  .seeds-of { font-size: 13px; }
+  .compass { margin-left: 8px; font-size: 11px; }
+  .place { font-size: 10px; letter-spacing: 0.24em; }
+  .job-name { font-size: 19px; }
+  .job-meta { font-size: 11px; gap: 10px; }
+  .hud-br { font-size: 32px; }
+  .toast { top: 20%; font-size: clamp(18px, 4.6vh, 28px); }
+  .card { top: 24%; white-space: normal; width: 88vw; }
+  .card-name { font-size: clamp(26px, 8vh, 44px); }
+  .card-sub { font-size: 10px; letter-spacing: 0.16em; }
+  .prompt { font-size: 11px; letter-spacing: 0.14em; }
+  .prompt em { font-size: 17px; }
+}
+@media (max-height: 400px) {
+  .keys:not(.touch-keys) { display: none; }
+  .touch-keys { margin-top: 12px; font-size: 11px; }
+  .title-inner { transform: none; }
+}

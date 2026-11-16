@@ -10,7 +10,7 @@ export class Hud {
     this.el = {
       job: $('job'), jobName: $('jobName'), jobSpot: $('jobSpot'), jobDist: $('jobDist'), jobCount: $('jobCount'), jobArrow: $('jobCompass')?.firstElementChild,
       prompt: $('prompt'), card: $('card'), cardKicker: $('cardKicker'), cardName: $('cardName'), cardSub: $('cardSub'),
-      trick: $('trick'), keys: $('keys'),
+      trick: $('trick'), keys: $('keys'), touchKeys: $('touchKeys'),
     };
     this._prompt = null;
     this._cardT = 0;
@@ -41,11 +41,14 @@ export class Hud {
     if (e.jobDist) e.jobDist.textContent = far(dist);
   }
 
-  /** The line at the foot of the screen (html; null to clear it). */
-  prompt(html) {
+  /** The line at the foot of the screen (html; null to clear it). `act` is what a tap on it does
+   *  on a touch screen ('land', 'takeoff'; see ui/touch.js). */
+  prompt(html, act = '') {
     const e = this.el.prompt;
     if (!e || html === this._prompt) return;
     this._prompt = html;
+    e.dataset.act = html ? act : '';
+    e.classList.toggle('tappable', !!(html && act));
     if (html) { e.innerHTML = html; e.classList.add('show'); } else e.classList.remove('show');
   }
 
@@ -61,16 +64,19 @@ export class Hud {
     e.dataset.state = state;
     e.hidden = !state;
     e.classList.toggle('cool', state === 'cool');
+    document.documentElement.dataset.trick = state;      // (the touch screen's flip button follows it)
   }
 
-  /** Add a line to the title screen's list of keys (once per key). */
-  hint(key, html) {
-    const e = this.el.keys;
-    if (!e || this._hints.has(key)) return;
+  /** Add a line to the title screen's list of keys (once per key), and its touch-screen form. */
+  hint(key, html, touchHtml) {
+    if (this._hints.has(key)) return;
     this._hints.add(key);
-    const d = document.createElement('div');
-    d.innerHTML = html;
-    e.appendChild(d);
+    for (const [e, h] of [[this.el.keys, html], [this.el.touchKeys, touchHtml]]) {
+      if (!e || !h) continue;
+      const d = document.createElement('div');
+      d.innerHTML = h;
+      e.appendChild(d);
+    }
   }
 
   update(dt) {

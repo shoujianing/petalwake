@@ -10,6 +10,7 @@
 //              drifts, frays and fades.
 import * as THREE from 'three';
 import { U } from '../core/ctx.js';
+import { hdrType } from '../core/device.js';
 import { RIBBON_VERT, RIBBON_WIND } from './vortex.js';
 
 const LEAN = 0.105;       // lean per m/s of wind: a 10 m/s gale lays the blades nearly flat
@@ -28,7 +29,7 @@ export class Wake {
     this.size = size;
     this.extent = extent;
     this.texel = extent / size;
-    const opt = { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping };
+    const opt = { type: hdrType(THREE), format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping };
     this.a = new THREE.WebGLRenderTarget(size, size, opt);
     this.b = new THREE.WebGLRenderTarget(size, size, opt);
     this.vel = new THREE.WebGLRenderTarget(size, size, opt);

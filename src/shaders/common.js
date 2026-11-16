@@ -102,15 +102,18 @@ uniform vec4 uWorld;   // size, 1/size, texel(uv), lodBias
 vec2 worldUV(vec2 xz){ return xz * uWorld.y + 0.5; }
 // light map blue channel -> metres offshore (+) / inland (-); stored as d / (|d| + 16)
 float shoreDist(float b){ float t = b * 2.0 - 1.0; return 16.0 * t / max(1.0 - abs(t), 0.004); }
-float terrainH(vec2 xz){ return textureLod(uHeightTex, worldUV(xz), 0.0).r; }
-float terrainHLod(vec2 xz, float lod){ return textureLod(uHeightTex, worldUV(xz), lod).r; }
+// (the height map is either one float channel, or two half-float channels to be added: see
+// heightTexSplit in world/terrain.js. A one-channel texture reads 0 in .g, so the sum serves both.)
+float hmapAt(vec2 uv, float lod){ vec2 s = textureLod(uHeightTex, uv, lod).rg; return s.r + s.g; }
+float terrainH(vec2 xz){ return hmapAt(worldUV(xz), 0.0); }
+float terrainHLod(vec2 xz, float lod){ return hmapAt(worldUV(xz), lod); }
 vec3 terrainN(vec2 xz, float lod){
   vec2 uv = worldUV(xz);
   float e = uWorld.z * exp2(lod);
-  float hl = textureLod(uHeightTex, uv - vec2(e, 0.0), lod).r;
-  float hr = textureLod(uHeightTex, uv + vec2(e, 0.0), lod).r;
-  float hd = textureLod(uHeightTex, uv - vec2(0.0, e), lod).r;
-  float hu = textureLod(uHeightTex, uv + vec2(0.0, e), lod).r;
+  float hl = hmapAt(uv - vec2(e, 0.0), lod);
+  float hr = hmapAt(uv + vec2(e, 0.0), lod);
+  float hd = hmapAt(uv - vec2(0.0, e), lod);
+  float hu = hmapAt(uv + vec2(0.0, e), lod);
   return normalize(vec3(hl - hr, 2.0 * e * uWorld.x, hd - hu));
 }
 `;

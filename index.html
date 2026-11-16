@@ -2,19 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="A broom, an island, a good wind. Fly low and fast over flower meadows, sea cliffs and open water.">
+<meta name="theme-color" content="#0b1522">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Petalwake">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:title" content="Petalwake">
+<meta property="og:description" content="A broom, an island, a good wind. A small browser game about flying low over meadows and sea cliffs.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <title>Petalwake</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Karla:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./src/ui/style.css">
 <link rel="stylesheet" href="./src/ui/journal.css">
+<link rel="stylesheet" href="./src/ui/touch.css">
 <script type="importmap">
 { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
 </script>
 </head>
 <body>
 <canvas id="view"></canvas>
+<noscript><p class="noscript">Petalwake needs JavaScript and WebGL2.</p></noscript>
 
 <div id="hud" hidden>
   <div class="hud-tl">
@@ -46,6 +61,13 @@
     <div class="bar"><div class="bar-fill" id="loadFill"></div></div>
     <p class="status" id="loadStatus">gathering the wind…</p>
     <button id="start" hidden>Take off</button>
+    <div class="keys touch-keys" id="touchKeys" hidden>
+      <div><b>left thumb</b> drag to steer · up climbs</div>
+      <div><b>boost</b> ride the gust</div>
+      <div><b>brake</b> ease up</div>
+      <div><b>❚❚</b> menu · tap the gems for the journal</div>
+    </div>
+    <p class="rotate-hint">turn your phone sideways for the best view</p>
     <div class="keys" id="keys" hidden>
       <div><kbd>W</kbd><kbd>S</kbd> dive · climb</div>
       <div><kbd>A</kbd><kbd>D</kbd> bank</div>
@@ -54,6 +76,31 @@
       <div><kbd>Mouse</kbd> steer · <kbd>C</kbd> camera · <kbd>I</kbd> invert pitch</div>
       <div><kbd>P</kbd> hide HUD · <kbd>M</kbd> mute · <kbd>J</kbd> journal</div>
     </div>
+  </div>
+</div>
+
+<div id="touch" hidden>
+  <div class="t-zone" id="tStickZone"></div>
+  <div class="t-stick" id="tStick"><div class="t-knob" id="tKnob"></div></div>
+  <div class="t-top">
+    <button class="t-icon" id="tCam" aria-label="Camera"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button>
+    <button class="t-icon" id="tPause" aria-label="Pause"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor"/></svg></button>
+  </div>
+  <div class="t-right">
+    <button class="t-btn t-flip" id="tFlip" aria-label="Kickflip">flip</button>
+    <button class="t-btn t-brake" id="tBrake" aria-label="Brake">brake</button>
+    <button class="t-btn t-boost" id="tBoost" aria-label="Boost">boost</button>
+  </div>
+</div>
+
+<div id="pauseMenu" hidden>
+  <div class="pm-card">
+    <p class="kicker">paused</p>
+    <button id="mResume" class="pm-primary">Fly on</button>
+    <button id="mInvert">Invert pitch <b>off</b></button>
+    <button id="mSound">Sound <b>on</b></button>
+    <button id="mHud">HUD <b>shown</b></button>
+    <button id="mFull">Full screen <b>off</b></button>
   </div>
 </div>
 

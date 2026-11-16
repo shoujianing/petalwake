@@ -1,0 +1,18 @@
+{
+  "name": "Petalwake",
+  "short_name": "Petalwake",
+  "description": "A broom, an island, a good wind. Fly low and fast over flower meadows, sea cliffs and open water.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b1522",
+  "theme_color": "#0b1522",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

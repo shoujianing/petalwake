@@ -19,9 +19,10 @@
 // is actually taking (windfx.js, through the coarse copy kept here).
 import * as THREE from 'three';
 import { U, World } from '../core/ctx.js';
+import { Device } from '../core/device.js';
 import { RIBBON_VERT, VORTEX } from './vortex.js';
 
-const SIZE = 4096;         // texels across the island
+// texels across the island: Device.q.strip (4096; 2048 on phones), read when the map is made
 const CELL = 2;            // metres: cell of the CPU copy
 const SKIRT = 0.3, SKIRT_W = 2.3;   // share of the bell that is its skirt, and how many times wider the skirt is
 const GW0 = 22;            // wind over the ground (m/s) that takes about two thirds of the petals
@@ -52,6 +53,7 @@ export class Strip {
   constructor(renderer, vortex) {
     this.renderer = renderer;
     this.vortex = vortex;
+    const SIZE = Device.q.strip;
     this.rt = new THREE.WebGLRenderTarget(SIZE, SIZE, {
       format: THREE.RedFormat, type: THREE.UnsignedByteType, depthBuffer: false,
       minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true,

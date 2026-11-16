@@ -1,0 +1,7 @@
+# Netlify: build with Node (no dependencies to install) and publish dist/. Headers: dist/_headers.
+[build]
+  command = "node tools/build.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, MEADOW, SHADOW, STRIP, TOWN_SHADOW, TOWN_MASK } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
+import { Device } from '../core/device.js';
+import { ASSETS } from '../core/paths.js';
 
 // CDLOD. For seams to stay closed, level L may only begin morphing beyond the farthest point any
 // level L-1 node can reach: RANGE + LEAF * 2 * sqrt(2) <= 2 * MORPH0 * RANGE. With these numbers
@@ -111,8 +113,65 @@ export function makeNoiseTexture() {
   return { texture: t, data, size: S };
 }
 
+/** The height map as one 32-bit float channel (GPUs that can filter 32-bit floats). */
+function heightTexF32(h, N) {
+  const ht = new THREE.DataTexture(h, N, N, THREE.RedFormat, THREE.FloatType);
+  ht.internalFormat = 'R32F';
+  ht.wrapS = ht.wrapT = THREE.ClampToEdgeWrapping;
+  ht.magFilter = THREE.LinearFilter;
+  ht.minFilter = THREE.LinearMipmapLinearFilter;
+  ht.generateMipmaps = true;
+  ht.needsUpdate = true;
+  return ht;
+}
+
+/**
+ * The height map for GPUs that cannot filter 32-bit floats (every iPhone and iPad, many Android
+ * phones): two half-float channels, the height rounded to a quarter metre (exact in half
+ * precision below 512 m) and what is left over (|r| <= 0.125, to about 0.1 mm). Filtering is
+ * linear, so the shaders sample both and add them (terrainH in shaders/common.js) and get the
+ * full-precision height back. The mip chain is built here, since the GPU may not be able to
+ * render to the format to make it.
+ */
+function heightTexSplit(h, N) {
+  const toH = THREE.DataUtils.toHalfFloat;
+  const pack = (src, n) => {
+    const out = new Uint16Array(n * n * 2);
+    for (let i = 0, j = 0; i < src.length; i++, j += 2) {
+      const v = src[i], hi = Math.round(v * 4) / 4;
+      out[j] = toH(hi);
+      out[j + 1] = toH(v - hi);
+    }
+    return out;
+  };
+  const mipmaps = [];
+  let src = h, n = N;
+  for (;;) {
+    mipmaps.push({ data: pack(src, n), width: n, height: n });
+    if (n === 1) break;
+    const m = n >> 1, dst = new Float32Array(m * m);
+    for (let y = 0; y < m; y++) {
+      const r0 = 2 * y * n, r1 = r0 + n;
+      for (let x = 0; x < m; x++) {
+        const a = r0 + 2 * x, b = r1 + 2 * x;
+        dst[y * m + x] = (src[a] + src[a + 1] + src[b] + src[b + 1]) * 0.25;
+      }
+    }
+    src = dst; n = m;
+  }
+  const ht = new THREE.DataTexture(mipmaps[0].data, N, N, THREE.RGFormat, THREE.HalfFloatType);
+  ht.internalFormat = 'RG16F';
+  ht.mipmaps = mipmaps;
+  ht.wrapS = ht.wrapT = THREE.ClampToEdgeWrapping;
+  ht.magFilter = THREE.LinearFilter;
+  ht.minFilter = THREE.LinearMipmapLinearFilter;
+  ht.generateMipmaps = false;
+  ht.needsUpdate = true;
+  return ht;
+}
+
 export class Terrain {
-  static async load(renderer, base = './assets') {
+  static async load(renderer, base = ASSETS) {
     const meta = await (await fetch(`${base}/terrain/meta.json`)).json();
     const [buf, splatImg, lightImg, tintImg, mats] = await Promise.all([
       fetch(`${base}/terrain/height.u16`).then((r) => r.arrayBuffer()),
@@ -136,13 +195,7 @@ export class Terrain {
     const h = (this.h = new Float32Array(N * N));
     const s = (meta.hMax - meta.hMin) / 65535;
     for (let i = 0; i < h.length; i++) h[i] = meta.hMin + q[i] * s;
-    const ht = new THREE.DataTexture(h, N, N, THREE.RedFormat, THREE.FloatType);
-    ht.internalFormat = 'R32F';
-    ht.wrapS = ht.wrapT = THREE.ClampToEdgeWrapping;
-    ht.magFilter = THREE.LinearFilter;
-    ht.minFilter = THREE.LinearMipmapLinearFilter;
-    ht.generateMipmaps = true;
-    ht.needsUpdate = true;
+    const ht = Device.floatLinear ? heightTexF32(h, N) : heightTexSplit(h, N);
     this.heightTex = ht;
 
     this.splatTex = dataTex(splatImg);

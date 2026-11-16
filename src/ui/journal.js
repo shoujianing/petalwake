@@ -29,7 +29,7 @@ export class Journal {
     document.body.appendChild(this.card);
 
     // ---- the journal page
-    this.page = el('div', 'journal', '<div class="journal-inner"><header><p class="j-kicker">the rider\'s journal</p><h2>Treasures of the island</h2><p class="j-sum"></p></header><div class="j-list"></div><footer><kbd>J</kbd> close</footer></div>');
+    this.page = el('div', 'journal', `<div class="journal-inner"><header><p class="j-kicker">the rider's journal</p><h2>Treasures of the island</h2><p class="j-sum"></p></header><div class="j-list"></div><footer>${document.documentElement.classList.contains('touch') ? 'tap to close' : '<kbd>J</kbd> close'}</footer></div>`);
     this.page.hidden = true;
     document.body.appendChild(this.page);
     this.page.addEventListener('click', () => this.toggle(false));

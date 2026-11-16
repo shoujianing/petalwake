@@ -13,6 +13,7 @@ import { Landing, LAND } from './landing.js';
 import { Courier } from './courier.js';
 import { Kickflip } from './tricks.js';
 import { Hud } from './hud.js';
+import { ASSETS } from '../core/paths.js';
 
 /** localStorage, where there is one (private windows and embeds may refuse). */
 class Store {
@@ -51,7 +52,7 @@ export class Gameplay {
       leave: () => { this.hush = 2.4; },
       broke: () => { this.hush = 1.2; },
     });
-    if (this.trick.unlocked) this.hud.hint('flip', '<kbd>Q</kbd> kickflip');
+    if (this.trick.unlocked) this.hud.hint('flip', '<kbd>Q</kbd> kickflip', '<b>flip</b> kickflip');
 
     game.land = (id) => this.land(id);
     game.takeoff = () => this.landing.takeoff();
@@ -63,11 +64,13 @@ export class Gameplay {
 
   /** The standing rider, if the file is there (she sets the broom down and stays on it otherwise). */
   async _loadStand() {
-    const base = './assets/models', name = this.params.get('stand') || 'rider_stand';
+    const base = `${ASSETS}/models`, name = this.params.get('stand') || 'rider_stand';
     try {
       // asking for a file that is not there writes an error to the console: where the server
       // lists its folders (the dev server does), look before asking
-      if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+      // (a built copy knows what it holds: see tools/build.mjs)
+      const built = window.PETALWAKE_MAP;
+      if (built) { if (!built[`assets/models/${name}.glb`]) return; } else if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
         const list = await fetch(`${base}/`).then((r) => (r.ok ? r.text() : '')).catch(() => '');
         if (list && !list.includes(`${name}.glb`)) return;
       }
@@ -102,7 +105,7 @@ export class Gameplay {
     if (this.open.length) {
       this.beacons = new Beacons(this.open);
       g.pipeline.overlay.add(this.beacons.group);
-      this.hud.hint('land', '<kbd>Space</kbd><kbd>Space</kbd> land on a tower');
+      this.hud.hint('land', '<kbd>Space</kbd><kbd>Space</kbd> land on a tower', '<b>land</b> tap it by a lit tower');
     }
     if (this.landing.busy && !this.open.includes(this.landing.pad)) this.landing.abort();
     this.zone = null;
@@ -124,13 +127,17 @@ export class Gameplay {
 
   _prompt(play) {
     const L = this.landing;
-    let html = null;
+    let html = null, act = '';
+    const touch = this.game.touch;
     if (play) {
-      if (L.state === 'landed') html = '<kbd>Space</kbd> to take off';
-      else if (L.state === 'approach' || L.state === 'settle') html = `coming in to <em>${esc(L.pad.name)}</em><small><kbd>Shift</kbd> breaks off</small>`;
-      else if (L.state === 'fly' && this.zone) html = `<kbd>Space</kbd><span class="x2">×2</span> to land<em>${esc(this.zone.name)}</em>`;
+      if (L.state === 'landed') { act = 'takeoff'; html = touch ? '<kbd>tap</kbd> to take off' : '<kbd>Space</kbd> to take off'; }
+      else if (L.state === 'approach' || L.state === 'settle') html = `coming in to <em>${esc(L.pad.name)}</em><small>${touch ? '<kbd>boost</kbd>' : '<kbd>Shift</kbd>'} breaks off</small>`;
+      else if (L.state === 'fly' && this.zone) {
+        act = 'land';
+        html = touch ? `<kbd>tap</kbd> to land<em>${esc(this.zone.name)}</em>` : `<kbd>Space</kbd><span class="x2">×2</span> to land<em>${esc(this.zone.name)}</em>`;
+      }
     }
-    this.hud.prompt(html);
+    this.hud.prompt(html, act);
   }
 
   /** Once a step, before the flight model moves. */
@@ -159,7 +166,7 @@ export class Gameplay {
         // the first job is announced once she is under way
         if (!this.playing) { this.playing = true; this.intro = 2.4; }
         if (this.intro > 0 && (this.intro -= dt) <= 0 && this.courier.target && !L.busy) {
-          this.hud.card('a parcel for', this.courier.target.name, 'follow the gold light · Space twice by a pad to land', 5);
+          this.hud.card('a parcel for', this.courier.target.name, g.touch ? 'follow the gold light · tap “land” by the tower' : 'follow the gold light · Space twice by a pad to land', 5);
         }
       }
       this.beacons.update(dt, f.pos, this.zone, this.courier.target, L.pad);

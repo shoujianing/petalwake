@@ -6,11 +6,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, WIND, SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
+import { ASSETS } from '../core/paths.js';
 
 const CELL = 48;
 
 export class Props {
-  static async load(base = './assets') {
+  static async load(base = ASSETS) {
     const placements = await fetch(`${base}/terrain/props.json`).then((r) => r.json());
     const loader = new GLTFLoader();
     const loaded = await Promise.all(Object.keys(placements).map(async (name) => {

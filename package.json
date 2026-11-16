@@ -1,11 +1,20 @@
 {
   "name": "petalwake",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "license": "MIT",
-  "description": "A broom-flying game: flower meadows, sea cliffs and a simulated wake. three.js, no build step.",
+  "description": "A broom-flying game: flower meadows, sea cliffs and a simulated wake. three.js, no build step to play; a small one to deploy.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "python3 tools/serve.py 6280"
+    "start": "python3 tools/serve.py 6280",
+    "dev": "python3 tools/serve.py 6280",
+    "dev:lan": "python3 tools/serve.py 6280 0.0.0.0",
+    "build": "node tools/build.mjs",
+    "preview": "node tools/build.mjs && node tools/preview.mjs 6281",
+    "preview:lan": "node tools/build.mjs && node tools/preview.mjs 6281 0.0.0.0"
   },
   "dependencies": {
     "three": "0.187.0"

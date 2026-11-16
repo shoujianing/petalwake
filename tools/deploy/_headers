@@ -1,0 +1,29 @@
+# Netlify and Cloudflare Pages read this file from the published folder (tools/build.mjs copies it).
+# The code (c/) and assets (a/) are named for their content, so they never change in place.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/version.json
+  Cache-Control: no-cache
+
+/c/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/a/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/icons/*
+  Cache-Control: public, max-age=604800
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=3600

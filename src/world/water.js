@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS, CLOUD_LOOKUP } from './sky.js';
+import { Device, hdrType } from '../core/device.js';
 
 const NW = 8;
 // swell runs toward the south-south-east so it meets the north cliffs head on
@@ -167,7 +168,7 @@ export class Water {
     this.reflScene = new THREE.Scene();
     this.reflScene.add(this.reflView.mesh);
     this.reflCam = new THREE.PerspectiveCamera();
-    this.reflRT = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: true, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    this.reflRT = new THREE.WebGLRenderTarget(4, 4, { type: hdrType(THREE), format: THREE.RGBAFormat, depthBuffer: true, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     this.reflTex.value = this.reflRT.texture;
     this._v = new THREE.Vector3(); this._t = new THREE.Vector3(); this._up = new THREE.Vector3(); this._save = new THREE.Vector3();
     this._bias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
@@ -175,7 +176,7 @@ export class Water {
 
   renderReflection(camera, size) {
     if (!this.reflRT) return;
-    const w = Math.max(8, size.x >> 1), h = Math.max(8, size.y >> 1);
+    const k = Device.q.reflection, w = Math.max(8, Math.round(size.x * k)), h = Math.max(8, Math.round(size.y * k));
     if (this.reflRT.width !== w || this.reflRT.height !== h) this.reflRT.setSize(w, h);
     // under water or far above there is nothing worth mirroring
     if (camera.position.y < 0.2 || camera.position.y > 900) { this.reflOn.value = 0; return; }

@@ -1,0 +1,13 @@
+.git
+dist
+node_modules
+screenshots
+art
+.shots
+tools/.venv
+tools/blender
+tools/gen
+tools/town
+tools/terrain
+tools/shore
+tools/places

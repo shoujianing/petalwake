@@ -1,0 +1,94 @@
+/* Touch screens: the on-screen controls (ui/touch.js), the pause menu, and where the HUD moves to
+   so that thumbs do not sit on it. Everything here is inert without html.touch. */
+
+#touch { position: fixed; inset: 0; z-index: 4; pointer-events: none; touch-action: none; }
+#touch button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; touch-action: none; }
+
+/* ---------- the stick: the left half of the screen, below the top strip ---------- */
+.t-zone { position: absolute; left: 0; top: calc(104px + var(--st)); bottom: 0; width: 50%; pointer-events: auto; touch-action: none; }
+.t-stick {
+  position: absolute; left: 0; top: 0; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%;
+  border: 1.5px solid rgba(255, 248, 236, 0.32); background: radial-gradient(circle, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.11));
+  opacity: 0.55; transition: opacity 0.25s ease; pointer-events: none;
+}
+.t-stick.on { opacity: 1; transition: none; }
+.t-knob {
+  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fff, #ffe6ef 60%, #ffc3d9); box-shadow: 0 4px 18px rgba(0, 10, 30, 0.35), 0 0 22px rgba(255, 158, 196, 0.35);
+}
+
+/* ---------- the buttons, under the right thumb ---------- */
+.t-right { position: absolute; right: calc(18px + var(--sr)); bottom: calc(18px + var(--sb)); width: 210px; height: 200px; }
+.t-btn {
+  position: absolute; display: grid; place-items: center; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  font: 600 11px "Karla", sans-serif !important; letter-spacing: 0.22em; text-transform: uppercase; text-indent: 0.22em;
+  border: 1.5px solid rgba(255, 248, 236, 0.45); background: rgba(10, 24, 44, 0.32); color: var(--ink);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 6px 22px rgba(0, 10, 30, 0.28);
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+.t-btn.on { transform: scale(0.93); background: rgba(255, 248, 236, 0.3); }
+.t-boost { right: 0; bottom: 0; width: 96px; height: 96px; border-color: rgba(255, 190, 220, 0.8); background: radial-gradient(circle at 50% 35%, rgba(255, 158, 196, 0.5), rgba(120, 40, 90, 0.35)); }
+.t-boost.on { background: radial-gradient(circle at 50% 35%, rgba(255, 200, 225, 0.85), rgba(255, 120, 170, 0.55)); }
+.t-brake { right: 108px; bottom: 6px; width: 70px; height: 70px; }
+.t-flip { right: 14px; bottom: 112px; width: 62px; height: 62px; border-color: rgba(255, 211, 107, 0.8); color: var(--gold); display: none; }
+html[data-trick="ready"] .t-flip { display: grid; }
+html[data-trick="cool"] .t-flip { display: grid; opacity: 0.35; }
+
+/* ---------- top strip: camera, pause ---------- */
+.t-top { position: absolute; top: calc(10px + var(--st)); left: 50%; transform: translateX(-50%); display: flex; gap: 12px; }
+.t-icon {
+  width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; pointer-events: auto; cursor: pointer;
+  border: 1px solid rgba(255, 248, 236, 0.35); background: rgba(10, 24, 44, 0.3); color: var(--ink);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.t-icon:active { background: rgba(255, 248, 236, 0.3); }
+
+/* ---------- the HUD, rearranged for thumbs ---------- */
+html.touch .hud-bl { left: 50%; bottom: calc(14px + var(--sb)); width: 150px; transform: translateX(-50%); text-align: center; }
+html.touch .hud-br { right: auto; left: 50%; bottom: calc(40px + var(--sb)); transform: translateX(-50%); font-size: 26px; }
+html.touch .hud-br small { font-size: 9px; margin-left: 5px; }
+html.touch .gust-label { display: none; }
+html.touch .trick { display: none; }
+html.touch .treasures { pointer-events: auto; cursor: pointer; padding: 6px 10px 6px 0; }
+html.touch .treasures kbd { display: none; }
+html.touch .prompt { bottom: calc(96px + var(--sb)); }
+html.touch .prompt.tappable.show {
+  pointer-events: auto; cursor: pointer; padding: 12px 22px; border-radius: 999px;
+  background: rgba(10, 24, 44, 0.45); border: 1px solid rgba(255, 211, 107, 0.7);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 0 26px rgba(255, 211, 107, 0.35);
+  animation: prompt-pulse 1.6s ease-in-out infinite;
+}
+@keyframes prompt-pulse { 50% { box-shadow: 0 0 40px rgba(255, 211, 107, 0.6); } }
+html.touch .treasure-card { bottom: auto; top: calc(14% + var(--st)); padding: 14px 22px 16px; }
+
+
+/* ---------- title ---------- */
+.touch-keys b, .keys b { font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.85em; margin-right: 6px; color: var(--petal); }
+.rotate-hint { display: none; margin: 18px 0 0; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.75; }
+@media (orientation: portrait) { html.touch .rotate-hint { display: block; } }
+html.touch #title.loading .rotate-hint, html.touch #title .bar:not([hidden]) ~ .rotate-hint { display: none; }
+
+/* phones held upright: smaller controls, out of the way of the view */
+@media (orientation: portrait) {
+  .t-right { transform: scale(0.82); transform-origin: right bottom; }
+  .t-zone { top: 45%; }
+  html.touch .hud-tr { top: calc(64px + var(--st)); }
+}
+
+/* ---------- pause menu ---------- */
+#pauseMenu {
+  position: fixed; inset: 0; z-index: 8; display: grid; place-items: center; background: rgba(6, 14, 28, 0.55);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.pm-card { display: flex; flex-direction: column; gap: 8px; width: min(320px, 82vw); max-height: 92%; overflow-y: auto; padding: 18px 20px 20px; text-align: center; }
+.pm-card .kicker { margin-bottom: 6px; }
+.pm-card button {
+  display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-radius: 999px; cursor: pointer;
+  font: 500 14px "Karla", sans-serif; letter-spacing: 0.08em; color: var(--ink);
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.pm-card button b { font-weight: 600; color: var(--gold); text-transform: uppercase; font-size: 12px; letter-spacing: 0.16em; }
+.pm-card .pm-primary {
+  justify-content: center; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: #2a1730;
+  background: linear-gradient(180deg, #fff3e2, #ffd9e6); border: 0; margin-bottom: 4px;
+}

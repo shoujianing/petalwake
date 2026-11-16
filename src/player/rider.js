@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { U } from '../core/ctx.js';
+import { ASSETS } from '../core/paths.js';
 
 const SCALE = 1.28;
 const SHADOW_SIZE = 1024;
@@ -14,7 +15,7 @@ const SHADOW_EXTENT = 3.4; // half-width of the shadow box in metres
 const STAND_HEIGHT = 2.05; // boots to hat tip, if the standing model does not say how big it is
 
 export class Rider {
-  static async load(renderer, base = './assets/models') {
+  static async load(renderer, base = `${ASSETS}/models`) {
     const [gltf, info] = await Promise.all([
       new GLTFLoader().loadAsync(`${base}/rider.glb`),
       fetch(`${base}/rider.json`).then((r) => r.json()),
@@ -72,7 +73,7 @@ export class Rider {
 
     // ---- shadow map for the world shaders (depth from the sun's point of view)
     const depth = new THREE.DepthTexture(SHADOW_SIZE, SHADOW_SIZE, THREE.FloatType);
-    depth.minFilter = depth.magFilter = THREE.LinearFilter;
+    depth.minFilter = depth.magFilter = THREE.NearestFilter;   // (float depth cannot be filtered everywhere; the shader takes ten jittered taps)
     this.shadowRT = new THREE.WebGLRenderTarget(SHADOW_SIZE, SHADOW_SIZE, { depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     this.shadowCam = new THREE.OrthographicCamera(-SHADOW_EXTENT, SHADOW_EXTENT, SHADOW_EXTENT, -SHADOW_EXTENT, 1, 60);
     this.depthMat = new THREE.MeshBasicMaterial({ colorWrite: false });
@@ -154,7 +155,7 @@ export class Rider {
    * the broom and sets it down. Same conventions as rider.glb (one mesh, _wind weights, facing
    * -z) except that the origin is on the floor between her boots.
    */
-  async loadStand(base = './assets/models', name = 'rider_stand') {
+  async loadStand(base = `${ASSETS}/models`, name = 'rider_stand') {
     const [gltf, info] = await Promise.all([
       new GLTFLoader().loadAsync(`${base}/${name}.glb`),
       fetch(`${base}/${name}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),

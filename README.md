@@ -16,7 +16,7 @@ beacon stand out in the meadows. A quarter of the buildings have somewhere high 
 tower gallery, a roof terrace, a lighthouse walk. Land there to deliver the parcel you are
 carrying and pick up the next.
 
-**Play it: <https://petalwake.non.io/v2>** (a desktop browser with WebGL2; the first load is about 95 MB).
+**Play it: <https://petalwake.non.io/v2>** (a browser with WebGL2, desktop or phone; the first load is about 95 MB).
 The first version, from before the towns, is still at <https://petalwake.non.io>.
 
 ![Sprinting over the meadow with petals wound into the wake](screenshots/meadow_wake.jpg)
@@ -87,7 +87,68 @@ over HTTP; opening `index.html` from disk will not load the modules).
 Options in the URL: `?q=low|medium|high` sets the meadow density, `?dpr=1.5` sets the pixel ratio,
 `?noscale` turns off the automatic resolution scaling, `?play` skips the title screen.
 
-It has been developed and checked in Chrome only.
+Also in the URL: `?tier=low|medium|high` picks the quality tier (see below), `?touch=1` shows the
+touch controls on a desktop, `?f16` forces the half-float height map that GPUs without 32-bit
+float filtering get.
+
+## Phones and tablets
+
+The game runs on phones and tablets with WebGL2: iOS/iPadOS 16.4 or later, and recent Chrome,
+Samsung Internet and Firefox on Android. It is best held sideways.
+
+- **Touch controls** ([src/ui/touch.js](src/ui/touch.js)). Put your left thumb down anywhere on the
+  left half and drag: sideways banks, up climbs. On the right are **boost** and **brake** (tap brake
+  twice to land, as with Space), and **flip** once the kickflip is earned. When a tower lights up,
+  the prompt itself is the button: tap it to land, tap again to take off. Along the top are the
+  camera and the pause menu (invert pitch, sound, HUD, full screen on Android); tap the treasure
+  counter for the journal.
+- **Quality tiers** ([src/core/device.js](src/core/device.js)). Desktops get `high`, as before.
+  Phones get `medium` or `low` by memory and core count. Lower tiers mean a lower pixel ratio,
+  less or no MSAA, a thinner meadow, smaller cloud, wake, petal-strip and town-shadow maps, fewer
+  bloom levels, and no god rays on `low`. The adaptive resolution aims for a steady 30 fps or
+  better there, and starts a step down.
+- **GPU fallbacks.** GPUs that cannot filter 32-bit float textures (all iPhones and iPads, many
+  Android phones) get the height map as two half-float channels, which the shaders add back to
+  full precision, with a mip chain built on the CPU. The rider's shadow map samples float depth
+  unfiltered, which works everywhere. Without half-float render targets the frame falls back to
+  8-bit. A lost GPU context, or a load that runs out of memory, says so and offers a reload
+  instead of freezing.
+- **Add to Home Screen** gives a full-screen app (there is a web manifest and icons). On iOS this
+  is the only way to play without Safari's address bar.
+
+## Deploying
+
+```bash
+npm run build      # or: node tools/build.mjs   (Node 18+, nothing to install)
+npm run preview    # serve dist/ at http://localhost:6281 with production headers
+```
+
+`dist/` is a plain static site. The build:
+
+- puts the code in a folder named for its hash (`c/<hash>/`);
+- names every asset for its own content (`a/terrain/height.<hash>.u16`), so both can be cached
+  forever and a new deploy only costs players the files that changed;
+- gzips the big binaries (`.pwz`) and unpacks them in the browser, since most static hosts will
+  not compress `application/octet-stream`. That takes the download from 169 MB to 103 MB and
+  keeps every file under 25 MiB.
+
+A small shim in `index.html` maps the game's own asset paths to the built ones
+([tools/deploy/shim.js](tools/deploy/shim.js)).
+
+| Host | How |
+|---|---|
+| Netlify | connect the repo; `netlify.toml` builds and publishes `dist/`, headers in `_headers` |
+| Cloudflare Pages | build command `node tools/build.mjs`, output `dist` (every file is under the 25 MiB limit) |
+| Vercel | connect the repo; `vercel.json` sets the build, output and cache headers |
+| GitHub Pages | Settings → Pages → Source: GitHub Actions, then run `.github/workflows/pages.yml` |
+| Docker / any server | `docker build -t petalwake . && docker run -p 8080:8080 petalwake` (nginx, `tools/deploy/nginx.conf`) |
+
+To serve the assets from object storage or a CDN instead, use
+`node tools/build.mjs --asset-base https://cdn.example.com/petalwake` and upload `dist/a/` there,
+with CORS allowing the game's origin.
+
+To try a dev or built copy on a phone on the same network, use `npm run dev:lan` or
+`npm run preview:lan`, then open `http://<your computer's address>:6280` (or `:6281`).
 
 ## How it works
 

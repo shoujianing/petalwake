@@ -22,10 +22,31 @@ import { Town } from './world/town.js';
 import { Places } from './world/places.js';
 import { Sound } from './audio/audio.js';
 import { Gameplay } from './game/index.js';
+import { Device, probe, hasWebGL2 } from './core/device.js';
+import { TouchControls } from './ui/touch.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('view');
 const params = new URLSearchParams(location.search);
+document.documentElement.classList.toggle('touch', Device.touch);
+document.documentElement.classList.toggle('mobile', Device.mobile);
+
+/** A message on the title screen in place of the loading bar, for when the game cannot go on. */
+function fail(msg, detail = '') {
+  const t = $('title');
+  t.classList.remove('gone', 'loading');
+  t.querySelector('.bar').hidden = true;
+  $('start').hidden = true;
+  $('keys').hidden = true;
+  const s = $('loadStatus');
+  s.hidden = false;
+  s.classList.add('error');
+  s.innerHTML = msg + (detail ? `<small>${detail}</small>` : '');
+}
+if (!hasWebGL2()) {
+  fail('This browser cannot fly the broom: it needs WebGL2.', 'Try a recent Chrome, Safari (iOS 16.4 or later), Firefox or Edge.');
+  throw new Error('no WebGL2');
+}
 
 const renderer = new THREE.WebGLRenderer({
   canvas, antialias: false, alpha: false, depth: false, stencil: false,
@@ -37,6 +58,15 @@ renderer.toneMapping = THREE.NoToneMapping;
 renderer.info.autoReset = false;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+probe(renderer);
+// the tier, for the console and for anyone wondering why it looks softer on a phone
+console.info(`petalwake: ${Device.tier} tier${Device.touch ? ', touch' : ''}${Device.floatLinear ? '' : ', half-float height map'}${Device.halfFloatRT ? '' : ', 8-bit frame'}`);
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  game.lost = true;
+  game.sound?.ctx?.suspend?.();
+  fail('The graphics went away (the device ran short of memory, or the app was in the background too long).', '<button class="retry" onclick="location.reload()">Reload</button>');
+}, false);
 
 const camera = new THREE.PerspectiveCamera(64, 1, 0.3, 60000);
 const world = new THREE.Scene();
@@ -46,10 +76,12 @@ if (!pipeline.reversed) { camera.near = 1.2; camera.far = 40000; camera.updatePr
 const game = {
   renderer, camera, world, pipeline, U, World,
   time: 0, paused: false, ready: false, state: 'title', fov: 64,
+  device: Device, quality: Device.tier, touch: Device.touch,
 };
 window.PW = game;
 
-let maxDpr = Number(params.get('dpr')) || 1.5;
+let maxDpr = Device.q.dpr;
+pipeline.scale = Device.q.scale;
 function applyFov() {
   // hold the horizontal field of view on very wide screens instead of letting it balloon
   const baseV = game.fov, hLimit = 122;
@@ -58,7 +90,7 @@ function applyFov() {
   camera.updateProjectionMatrix();
 }
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
+  const w = document.documentElement.clientWidth || window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
   const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   renderer.setPixelRatio(dpr);
@@ -69,6 +101,16 @@ function resize() {
 }
 game.resize = resize;
 window.addEventListener('resize', resize);
+// phones: the address bar comes and goes, and a turn of the phone does not always send 'resize'
+window.visualViewport?.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+// in the background: hush, and hold the world still (the frame loop stops there by itself)
+document.addEventListener('visibilitychange', () => {
+  const ctx = game.sound?.ctx;
+  if (document.hidden) ctx?.suspend?.();
+  else if (game.state === 'play' && !game.paused && !game.sound?.muted) ctx?.resume?.();
+  last = 0;
+});
 
 function setLoad(frac, msg) {
   $('loadFill').style.width = `${Math.round(frac * 100)}%`;
@@ -103,12 +145,12 @@ async function boot() {
   await tick();
 
   setLoad(0.4, 'sowing the meadows…');
-  const meadow = (game.meadow = new Meadow(terrain, params.get('q') || 'high'));
+  const meadow = (game.meadow = new Meadow(terrain, Device.q.meadow));
   world.add(meadow.group);
 
   const sky = (game.sky = new Sky());
   world.add(sky.mesh);
-  const clouds = (game.clouds = new CloudBaker(renderer));
+  const clouds = (game.clouds = new CloudBaker(renderer, ...Device.q.clouds));
   clouds.begin();
   while (!clouds.done) {
     setLoad(0.45 + 0.4 * clouds.step(2), 'painting the sky…');
@@ -142,7 +184,7 @@ async function boot() {
   pipeline.overlay.environment = sky.bakeEnvironment(renderer);
   const vortex = (game.vortex = new VortexWake(terrain));
   vortex.river = river;
-  game.wake = new Wake(renderer, vortex);
+  game.wake = new Wake(renderer, vortex, Device.q.wake);
   game.strip = new Strip(renderer, vortex);
   const fx = (game.fx = new WindFX(terrain, noise, pipeline.uDepth));
   fx.vortex = vortex;
@@ -158,6 +200,7 @@ async function boot() {
   game.sound = new Sound();
 
   game.input = new Input(canvas);
+  if (Device.touch) game.touchControls = new TouchControls(game);
   const flight = (game.flight = new Flight(terrain));
   flight.river = river;
   flight.props = props;
@@ -176,7 +219,8 @@ async function boot() {
   game.ready = true;
   $('title').classList.remove('loading');
   $('start').hidden = false;
-  $('keys').hidden = false;
+  $('keys').hidden = Device.touch;
+  $('touchKeys').hidden = !Device.touch;
   $('start').addEventListener('click', start);
   if (params.has('debug')) $('title').classList.add('gone');
   if (params.has('play')) start();
@@ -192,6 +236,16 @@ function start() {
   game.sound.start();
   $('title').classList.add('gone');
   $('hud').hidden = false;
+  if (Device.touch) {
+    game.touchControls.show();
+    // Android: take the whole screen and hold it sideways. (iOS has neither for a page; added to
+    // the home screen it runs full screen anyway.)
+    const el = document.documentElement;
+    if (!Device.ios && el.requestFullscreen && !document.fullscreenElement) {
+      el.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+    }
+    return;
+  }
   // (where the lock is refused - an embedded frame, say - the keyboard still flies the broom)
   canvas.requestPointerLock?.()?.catch?.(() => {});
 }
@@ -200,8 +254,10 @@ function start() {
 let last = 0;
 // Adaptive resolution: if the machine cannot hold the frame rate, render fewer pixels rather than
 // drop frames; climb back when there is headroom. Steps are coarse and rare (each one reallocates).
-const SCALES = [1, 0.85, 0.72, 0.6, 0.5];
-const auto = { i: 0, acc: 0, n: 0, hold: 3, good: 0, on: !params.has('noscale') && !params.has('debug') };
+// Phones aim for a steady 30 or better rather than 60, and start a step or two down.
+const SCALES = [1, 0.85, 0.72, 0.6, 0.5, 0.42];
+const [FPS_LO, FPS_HI] = Device.q.fps;
+const auto = { i: Math.max(0, SCALES.indexOf(Device.q.scale)), acc: 0, n: 0, hold: 3, good: 0, on: !params.has('noscale') && !params.has('debug') };
 function autoScale(rawDt) {
   if (!auto.on || rawDt > 0.25) return;          // ignore hitches (tab switches, loading)
   auto.acc += rawDt; auto.n++;
@@ -210,9 +266,9 @@ function autoScale(rawDt) {
   auto.acc = 0; auto.n = 0;
   if (auto.hold > 0) { auto.hold--; return; }
   let next = auto.i;
-  if (avg > 1 / 48 && auto.i < SCALES.length - 1) next++;
-  else if (avg < 1 / 58 && auto.i > 0 && auto.good++ > 4) next--;
-  if (avg >= 1 / 58) auto.good = 0;
+  if (avg > 1 / FPS_LO && auto.i < SCALES.length - 1) next++;
+  else if (avg < 1 / FPS_HI && auto.i > 0 && auto.good++ > 4) next--;
+  if (avg >= 1 / FPS_HI) auto.good = 0;
   if (next !== auto.i) {
     auto.i = next; auto.hold = 2; auto.good = 0;
     pipeline.scale = SCALES[next];
@@ -222,8 +278,8 @@ function autoScale(rawDt) {
 game.auto = auto;
 function frame(now) {
   requestAnimationFrame(frame);
-  if (game.capturing) return;
-  const raw = (now - last) / 1000 || 0.016;
+  if (game.capturing || game.lost) return;
+  const raw = last ? (now - last) / 1000 : 0.016;
   const dt = Math.min(raw, 0.05);
   last = now;
   autoScale(raw);
@@ -502,5 +558,6 @@ game.shot = async (name = 'shot', w = 1920, h = 1080, steps = 2, dt = 1 / 60) =>
 
 boot().catch((e) => {
   console.error(e);
-  $('loadStatus').textContent = `failed to load: ${e.message}`;
+  const mem = Device.mobile ? ' On a phone this is most often memory: close other tabs and apps and try again.' : '';
+  fail(`The island would not load: ${String(e.message || e).replace(/[<>&]/g, '')}.`, `${mem}<button class="retry" onclick="location.reload()">Try again</button>`);
 });

@@ -14,12 +14,14 @@ import { SKY_UNIFORMS } from './sky.js';
 import { materialArrays, loadImage, dataTex } from './terrain.js';
 import { SPR } from '../fx/particles.js';
 import { waveHeight } from './water.js';
+import { Device } from '../core/device.js';
+import { ASSETS } from '../core/paths.js';
 
 const NEAR = 135, MID = 560;       // metres: beyond NEAR the finest detail goes, beyond MID the middle level too
 const MAX_TOWNS = 2;               // shadow maps the world shaders can read
 
 export class Town {
-  static async load(renderer, base = './assets') {
+  static async load(renderer, base = ASSETS) {
     let index;
     try { index = await fetch(`${base}/town/index.json`).then((r) => (r.ok ? r.json() : null)); } catch { index = null; }
     const town = new Town(renderer);
@@ -148,7 +150,7 @@ export class Town {
     const keepShadow = r.shadowMap.enabled;
     r.shadowMap.enabled = false;
     biggest.forEach((t, i) => {
-      const S = t.shadowSize;
+      const S = Math.min(t.shadowSize, Device.q.townShadowMax);
       const depth = new THREE.DepthTexture(S, S, THREE.FloatType);
       depth.minFilter = depth.magFilter = THREE.NearestFilter;
       const rt = new THREE.WebGLRenderTarget(S, S, { depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });

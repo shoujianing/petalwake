@@ -24,6 +24,7 @@ import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
 import { SEA_STATE } from './water.js';
+import { ASSETS } from '../core/paths.js';
 
 // ------------------------------------------------------------------------------------ tuning
 const CELL = 24;                       // metres: one cell = one leaf node of the terrain quadtree
@@ -189,7 +190,7 @@ async function loadKit(base) {
 
 // ------------------------------------------------------------------------------------ Shore
 export class Shore {
-  static async load(renderer, terrain, base = './assets') {
+  static async load(renderer, terrain, base = ASSETS) {
     const kit = await loadKit(base);
     return new Shore(renderer, terrain, kit);
   }

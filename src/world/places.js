@@ -30,6 +30,7 @@ import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, WIND, SHADO
 import { SKY_UNIFORMS } from './sky.js';
 import { KIND, SPR } from '../fx/particles.js';
 import { Journal } from '../ui/journal.js';
+import { ASSETS } from '../core/paths.js';
 
 const SETS = ['west', 'east'];
 const LOAD_DIST = 1500;       // metres: fetch a place's models when the rider (or the eye) is this close
@@ -52,7 +53,7 @@ function vnoise(x, z, seed) {
 }
 
 export class Places {
-  static async load(renderer, terrain, base = './assets') {
+  static async load(renderer, terrain, base = ASSETS) {
     const sets = await Promise.all(SETS.map(async (name) => {
       try {
         const res = await fetch(`${base}/places/${name}.json`);

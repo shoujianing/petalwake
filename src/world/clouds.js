@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { U, shared } from '../core/ctx.js';
 import { ATMOSPHERE } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
+import { hdrType } from '../core/device.js';
 
 const tri = (() => {
   const g = new THREE.BufferGeometry();
@@ -18,7 +19,7 @@ export class CloudBaker {
     this.W = W; this.H = H;
     this.passes = 3;
     this.strips = 16;
-    const opt = { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false };
+    const opt = { type: hdrType(THREE), format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false };
     this.acc = new THREE.WebGLRenderTarget(W, H, opt);
     this.final = new THREE.WebGLRenderTarget(W, H, { ...opt, minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true });
     this.final.texture.wrapS = THREE.RepeatWrapping;

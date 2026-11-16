@@ -1,4 +1,5 @@
-// Input: keyboard, pointer-lock mouse (sprung virtual stick) and gamepad, merged into one state.
+// Input: keyboard, pointer-lock mouse (sprung virtual stick), gamepad and the on-screen touch
+// controls (ui/touch.js writes `touch` and calls press()), merged into one state.
 // The brake doubles as the landing key: held it is the brake as ever, tapped twice inside
 // DOUBLE_TAP ms it also posts 'Space2' to `pressed` (come in to land; see game/index.js).
 const DOUBLE_TAP = 300;
@@ -21,6 +22,7 @@ export class Input {
     this._tap = -1e9;         // when the brake was last tapped (ms)
     this._padBrake = false;   // gamepad buttons last step, for their edges
     this._padTrick = false;
+    this.touch = { x: 0, y: 0, boost: false, brake: false };   // from the on-screen controls
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
@@ -48,6 +50,12 @@ export class Input {
     if (t - this._tap < DOUBLE_TAP) { this.pressed.add('Space2'); this._tap = -1e9; } else this._tap = t;
   }
 
+  /** An edge press from outside the keyboard (the touch buttons): same codes as the keys. */
+  press(code, t = performance.now()) {
+    this.pressed.add(code);
+    if (code === 'Space') this._tapBrake(t);
+  }
+
   take(code) {
     if (this.pressed.has(code)) { this.pressed.delete(code); return true; }
     return false;
@@ -65,8 +73,12 @@ export class Input {
     this.stickX *= relax; this.stickY *= relax;
     x += this.stickX * 1.6;
     y += -this.stickY * 1.6;
-    let boost = k.has('ShiftLeft') || k.has('ShiftRight') || !!this.mouseBoost;
-    let brake = k.has('Space') || !!this.mouseBrake;
+    // the touch stick: x banks, drag up climbs (as the mouse does; I inverts it like everything else)
+    const T = this.touch;
+    x += T.x;
+    y += T.y;
+    let boost = k.has('ShiftLeft') || k.has('ShiftRight') || !!this.mouseBoost || T.boost;
+    let brake = k.has('Space') || !!this.mouseBrake || T.brake;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const p of pads) {
       if (!p || !p.connected) continue;

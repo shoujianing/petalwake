@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { U } from './ctx.js';
 import { TONEMAP } from '../shaders/common.js';
+import { Device, hdrType } from './device.js';
 
 const tri = (() => {
   const g = new THREE.BufferGeometry();
@@ -21,6 +22,8 @@ export class Pipeline {
     this.renderer = renderer;
     this.reversed = renderer.capabilities.reversedDepthBuffer === true;
     this.scale = 1;
+    this.q = Device.q;
+    this.hdr = hdrType(THREE);
     this.quad = new THREE.Mesh(tri, null);
     this.quad.frustumCulled = false;
     this.quadScene = new THREE.Scene();
@@ -93,23 +96,24 @@ export class Pipeline {
     this.dispose();
     const depth = new THREE.DepthTexture(W, H, THREE.FloatType);
     depth.format = THREE.DepthFormat;
+    const samples = this.q.samples, type = this.hdr;
     this.sceneRT = new THREE.WebGLRenderTarget(W, H, {
-      type: THREE.HalfFloatType, format: THREE.RGBAFormat, samples: 4, depthBuffer: true, depthTexture: depth,
+      type, format: THREE.RGBAFormat, samples, depthBuffer: true, depthTexture: depth,
       minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
     });
     // second target: blurred world + sharp rider/particles (own depth buffer for the rider's self-occlusion)
     this.compRT = new THREE.WebGLRenderTarget(W, H, {
-      type: THREE.HalfFloatType, format: THREE.RGBAFormat, samples: 4, depthBuffer: true,
+      type, format: THREE.RGBAFormat, samples, depthBuffer: true,
       minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
     });
     this.bloom = [];
     let bw = W >> 1, bh = H >> 1;
-    for (let i = 0; i < 7 && bw > 4 && bh > 4; i++) {
-      this.bloom.push(new THREE.WebGLRenderTarget(bw, bh, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter }));
+    for (let i = 0; i < this.q.bloomLevels && bw > 4 && bh > 4; i++) {
+      this.bloom.push(new THREE.WebGLRenderTarget(bw, bh, { type, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter }));
       bw >>= 1; bh >>= 1;
     }
     this.bloomUp = this.bloom.slice(0, -1).map((rt) => rt.clone());
-    this.raysRT = new THREE.WebGLRenderTarget(W >> 1, H >> 1, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    this.raysRT = new THREE.WebGLRenderTarget(this.q.rays ? W >> 1 : 4, this.q.rays ? H >> 1 : 4, { type, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     this.uDepth.value = depth;
     this.uScene.value = this.sceneRT.texture;
   }
@@ -140,7 +144,7 @@ export class Pipeline {
 
     // 2 + 3. motion-blurred world, then the sharp layer, in one pass
     const shutter = dt > 0 ? Math.min((1 / 60) / dt, 2.0) : 1.0; // constant apparent streak length regardless of frame rate
-    this.blurMat.uniforms.uStrength.value = this.hasPrev ? p.blur * 0.62 * shutter : 0;
+    this.blurMat.uniforms.uStrength.value = this.hasPrev ? p.blur * this.q.blur * 0.62 * shutter : 0;
     r.setRenderTarget(this.compRT);
     r.render(this.overlay, camera);
 
@@ -169,7 +173,8 @@ export class Pipeline {
     const camDir = camera.getWorldDirection(this._cd || (this._cd = new THREE.Vector3()));
     const facing = camDir.dot(U.uSunDir.value);
     this.raysMat.uniforms.tColor.value = this.compRT.texture;
-    this.raysMat.uniforms.uSun.value.set(sun.x * 0.5 + 0.5, sun.y * 0.5 + 0.5, Math.max(0, (facing - 0.15) / 0.85));
+    // (on the low tier the shafts are skipped: the pass writes nothing into a tiny target)
+    this.raysMat.uniforms.uSun.value.set(sun.x * 0.5 + 0.5, sun.y * 0.5 + 0.5, this.q.rays ? Math.max(0, (facing - 0.15) / 0.85) : 0);
     this.raysMat.uniforms.uAspect.value = this.size.x / this.size.y;
     this._blit(this.raysMat, this.raysRT);
 
